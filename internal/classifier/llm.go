@@ -13,10 +13,9 @@ import (
 	"detection-service/internal/models"
 )
 
-const (
-	defaultAPIKey = "aim-haka-7b7018e15bac5cfad7220f562ecc94a6fb116fe3626c4456"
-	modelName     = "gpt-4.1"
-)
+const modelName = "gpt-4.1"
+
+var ErrMissingAPIKey = fmt.Errorf("OPENAI_API_KEY environment variable is required")
 
 var topicPattern = regexp.MustCompile(`\b(healthcare|finance|legal|hr)\b`)
 
@@ -24,16 +23,16 @@ type LLMClassifier struct {
 	client *openai.Client
 }
 
-func NewLLMClassifier() *LLMClassifier {
+func NewLLMClassifier() (*LLMClassifier, error) {
 	apiKey := os.Getenv("OPENAI_API_KEY")
 	if apiKey == "" {
-		apiKey = defaultAPIKey
+		return nil, ErrMissingAPIKey
 	}
 
 	config := openai.DefaultConfig(apiKey)
 	config.BaseURL = "https://api.aim.security/fw/v1/proxy/openai"
 
-	return &LLMClassifier{client: openai.NewClientWithConfig(config)}
+	return &LLMClassifier{client: openai.NewClientWithConfig(config)}, nil
 }
 
 func (c *LLMClassifier) ClassifyAll(ctx context.Context, prompt string, enabled []models.Topic) ([]models.Topic, error) {

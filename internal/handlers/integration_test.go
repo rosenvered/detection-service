@@ -31,7 +31,7 @@ func setupTestRouter(t *testing.T, llm classifier.TopicClassifier) (*gin.Engine,
 
 	auditStore := store.NewAuditStore(db)
 	if llm == nil {
-		llm = classifier.NewLLMClassifier()
+		llm = &classifier.StubClassifier{}
 	}
 	service := classifier.NewService(
 		classifier.NewKeywordMatcher(),

@@ -10,3 +10,6 @@ bin/
 
 # OS
 .DS_Store
+
+# Local env (secrets)
+.env

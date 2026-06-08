@@ -30,7 +30,10 @@ func main() {
 
 	auditStore := store.NewAuditStore(db)
 	keywords := classifier.NewKeywordMatcher()
-	llm := classifier.NewLLMClassifier()
+	llm, err := classifier.NewLLMClassifier()
+	if err != nil {
+		log.Fatalf("failed to create LLM classifier: %v", err)
+	}
 	service := classifier.NewService(keywords, llm, policyStore, auditStore)
 
 	detectHandler := handlers.NewDetectHandler(service)

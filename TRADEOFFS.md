@@ -32,6 +32,12 @@ Easy to build, explain in an interview, and extend. Production would need manage
 
 Acceptable for take-home scope. First production addition would be API keys with per-tenant policy isolation.
 
+## API key handling
+
+**Chosen:** Require `OPENAI_API_KEY` via environment variable; no hardcoded fallback in source.
+
+The take-home spec includes a demo key for evaluators — it belongs in setup instructions (README / `.env.example`), not committed code. Server fails fast at startup if the variable is missing. Production would use a secret manager with rotation.
+
 ## Test strategy
 
 **Chosen:** `StubClassifier` for offline unit and HTTP integration tests. No test hits the real LLM proxy — fast, deterministic CI.

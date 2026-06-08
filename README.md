@@ -6,15 +6,26 @@ See [DESIGN.md](DESIGN.md) for architecture and [TRADEOFFS.md](TRADEOFFS.md) for
 
 ## Run
 
+Set `OPENAI_API_KEY` to the key from the take-home instructions, then start the server:
+
 ```bash
+export OPENAI_API_KEY='<your-aim-proxy-key>'
 go run ./cmd/server
 ```
 
-Optional environment variables:
+Or use a local `.env` file (not committed):
 
+```bash
+cp .env.example .env
+# edit .env and paste your key
+set -a && source .env && set +a && go run ./cmd/server
+```
+
+Environment variables:
+
+- `OPENAI_API_KEY` — **required** — API key for the AIM OpenAI proxy
 - `ADDR` — listen address (default `:8080`)
 - `DB_PATH` — SQLite file path (default `detection.db`)
-- `OPENAI_API_KEY` — API key for the AIM proxy (falls back to the take-home demo key)
 
 ## Endpoints
 
