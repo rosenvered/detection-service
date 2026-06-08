@@ -36,6 +36,7 @@ func main() {
 	detectHandler := handlers.NewDetectHandler(service)
 	protectHandler := handlers.NewProtectHandler(service)
 	policyHandler := handlers.NewPolicyHandler(policyStore)
+	auditHandler := handlers.NewAuditHandler(auditStore)
 
 	gin.SetMode(gin.ReleaseMode)
 	engine := gin.New()
@@ -49,6 +50,7 @@ func main() {
 	engine.GET("/policies/:id", policyHandler.Get)
 	engine.PUT("/policies/:id", policyHandler.Update)
 	engine.DELETE("/policies/:id", policyHandler.Delete)
+	engine.GET("/audit", auditHandler.Query)
 
 	addr := os.Getenv("ADDR")
 	if addr == "" {

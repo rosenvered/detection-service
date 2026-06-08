@@ -55,4 +55,14 @@ curl -X PUT http://localhost:8080/policies/pol_a1b2c3 \
 curl -X DELETE http://localhost:8080/policies/pol_a1b2c3
 ```
 
-A default policy `pol_a1b2c3` with all four topics enabled is seeded on startup. Every `/detect` and `/protect` call is written to the audit log in SQLite.
+### GET /audit — query call history
+
+Every `/detect` and `/protect` call is logged automatically. Query with optional filters:
+
+```bash
+curl "http://localhost:8080/audit?policy_id=pol_a1b2c3&endpoint=protect&limit=10&offset=0"
+```
+
+Query params: `policy_id`, `endpoint` (`detect` or `protect`), `from` / `to` (RFC3339), `limit` (default 50, max 100), `offset` (default 0).
+
+A default policy `pol_a1b2c3` with all four topics enabled is seeded on startup.

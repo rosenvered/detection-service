@@ -18,8 +18,8 @@ func NewProtectHandler(service *classifier.Service) *ProtectHandler {
 }
 
 func (h *ProtectHandler) Protect(c *gin.Context) {
-	var req models.DetectRequest
-	if err := c.ShouldBindJSON(&req); err != nil {
+	req, ok := bindDetectRequest(c)
+	if !ok {
 		writeError(c, http.StatusBadRequest, "invalid request: prompt and policy_id are required")
 		return
 	}

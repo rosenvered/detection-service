@@ -12,12 +12,12 @@ import (
 
 type Service struct {
 	keywords *KeywordMatcher
-	llm      *LLMClassifier
+	llm      TopicClassifier
 	policies *store.PolicyStore
 	audit    *store.AuditStore
 }
 
-func NewService(keywords *KeywordMatcher, llm *LLMClassifier, policies *store.PolicyStore, audit *store.AuditStore) *Service {
+func NewService(keywords *KeywordMatcher, llm TopicClassifier, policies *store.PolicyStore, audit *store.AuditStore) *Service {
 	return &Service{
 		keywords: keywords,
 		llm:      llm,
