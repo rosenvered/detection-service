@@ -2,6 +2,8 @@
 
 Classifies customer prompts for sensitive topics (healthcare, finance, legal, hr) using a hybrid keyword + GPT-4.1 classifier via the AIM OpenAI proxy.
 
+See [DESIGN.md](DESIGN.md) for architecture and [TRADEOFFS.md](TRADEOFFS.md) for design decisions.
+
 ## Run
 
 ```bash
@@ -66,3 +68,21 @@ curl "http://localhost:8080/audit?policy_id=pol_a1b2c3&endpoint=protect&limit=10
 Query params: `policy_id`, `endpoint` (`detect` or `protect`), `from` / `to` (RFC3339), `limit` (default 50, max 100), `offset` (default 0).
 
 A default policy `pol_a1b2c3` with all four topics enabled is seeded on startup.
+
+## Test
+
+```bash
+go test ./...
+```
+
+Tests use a stub LLM — no network calls. Integration tests exercise the full HTTP stack with an in-memory SQLite database.
+
+## Project layout
+
+```
+cmd/server/          Entry point, route wiring
+internal/handlers/   HTTP handlers (detect, protect, policies, audit)
+internal/classifier/ Keyword matcher, LLM client, orchestration
+internal/store/      SQLite persistence (policies, audit)
+internal/models/     Shared types
+```
