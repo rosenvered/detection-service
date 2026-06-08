@@ -29,15 +29,26 @@ func main() {
 	}
 
 	auditStore := store.NewAuditStore(db)
+	keywords := classifier.NewKeywordMatcher()
 	llm := classifier.NewLLMClassifier()
-	service := classifier.NewService(llm, policyStore, auditStore)
+	service := classifier.NewService(keywords, llm, policyStore, auditStore)
+
 	detectHandler := handlers.NewDetectHandler(service)
+	protectHandler := handlers.NewProtectHandler(service)
+	policyHandler := handlers.NewPolicyHandler(policyStore)
 
 	gin.SetMode(gin.ReleaseMode)
 	engine := gin.New()
 	engine.Use(gin.Recovery(), gin.Logger())
 
 	engine.POST("/detect", detectHandler.Detect)
+	engine.POST("/protect", protectHandler.Protect)
+
+	engine.POST("/policies", policyHandler.Create)
+	engine.GET("/policies", policyHandler.List)
+	engine.GET("/policies/:id", policyHandler.Get)
+	engine.PUT("/policies/:id", policyHandler.Update)
+	engine.DELETE("/policies/:id", policyHandler.Delete)
 
 	addr := os.Getenv("ADDR")
 	if addr == "" {

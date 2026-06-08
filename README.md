@@ -1,6 +1,6 @@
 # Detection Service
 
-Classifies customer prompts for sensitive topics (healthcare, finance, legal, hr) using GPT-4.1 via the AIM OpenAI proxy.
+Classifies customer prompts for sensitive topics (healthcare, finance, legal, hr) using a hybrid keyword + GPT-4.1 classifier via the AIM OpenAI proxy.
 
 ## Run
 
@@ -14,7 +14,11 @@ Optional environment variables:
 - `DB_PATH` — SQLite file path (default `detection.db`)
 - `OPENAI_API_KEY` — API key for the AIM proxy (falls back to the take-home demo key)
 
-## Example
+## Endpoints
+
+### POST /detect — full classification
+
+Returns all detected topics (keyword ∪ LLM), filtered by policy.
 
 ```bash
 curl -X POST http://localhost:8080/detect \
@@ -22,10 +26,33 @@ curl -X POST http://localhost:8080/detect \
   -d '{"prompt":"How much will my treatment cost and will insurance cover it?","policy_id":"pol_a1b2c3"}'
 ```
 
-Response:
+### POST /protect — fail-fast
 
-```json
-{"detected_topics":["healthcare","finance"]}
+Keyword scan first; LLM only if no keyword hit. Returns the first detected topic.
+
+```bash
+curl -X POST http://localhost:8080/protect \
+  -H 'Content-Type: application/json' \
+  -d '{"prompt":"Please summarize this medical record...","policy_id":"pol_a1b2c3"}'
 ```
 
-A default policy `pol_a1b2c3` with all four topics enabled is seeded on startup. Every `/detect` call is written to the audit log in SQLite.
+### /policies — CRUD
+
+```bash
+# List
+curl http://localhost:8080/policies
+
+# Create
+curl -X POST http://localhost:8080/policies \
+  -H 'Content-Type: application/json' \
+  -d '{"enabled_topics":["healthcare","finance"]}'
+
+# Get / Update / Delete
+curl http://localhost:8080/policies/pol_a1b2c3
+curl -X PUT http://localhost:8080/policies/pol_a1b2c3 \
+  -H 'Content-Type: application/json' \
+  -d '{"enabled_topics":["healthcare"]}'
+curl -X DELETE http://localhost:8080/policies/pol_a1b2c3
+```
+
+A default policy `pol_a1b2c3` with all four topics enabled is seeded on startup. Every `/detect` and `/protect` call is written to the audit log in SQLite.

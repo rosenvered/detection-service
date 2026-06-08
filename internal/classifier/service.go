@@ -11,13 +11,15 @@ import (
 )
 
 type Service struct {
+	keywords *KeywordMatcher
 	llm      *LLMClassifier
 	policies *store.PolicyStore
 	audit    *store.AuditStore
 }
 
-func NewService(llm *LLMClassifier, policies *store.PolicyStore, audit *store.AuditStore) *Service {
+func NewService(keywords *KeywordMatcher, llm *LLMClassifier, policies *store.PolicyStore, audit *store.AuditStore) *Service {
 	return &Service{
+		keywords: keywords,
 		llm:      llm,
 		policies: policies,
 		audit:    audit,
@@ -38,7 +40,48 @@ func (s *Service) Detect(ctx context.Context, prompt, policyID string) (DetectRe
 		return DetectResult{}, err
 	}
 
-	topics, err := s.llm.ClassifyAll(ctx, prompt, policy.EnabledTopics)
+	keywordHits := s.keywords.AllMatches(prompt, policy.EnabledTopics)
+
+	llmHits, err := s.llm.ClassifyAll(ctx, prompt, policy.EnabledTopics)
+	if err != nil {
+		return DetectResult{}, fmt.Errorf("%w: %v", ErrLLMClassification, err)
+	}
+
+	topics := unionTopics(keywordHits, llmHits)
+	result := DetectResult{
+		Topics:    topics,
+		Method:    detectionMethod(keywordHits, llmHits),
+		LatencyMs: time.Since(start).Milliseconds(),
+	}
+
+	if err := s.writeAudit("detect", prompt, policyID, result); err != nil {
+		return DetectResult{}, err
+	}
+
+	return result, nil
+}
+
+func (s *Service) Protect(ctx context.Context, prompt, policyID string) (DetectResult, error) {
+	start := time.Now()
+
+	policy, err := s.policies.GetByID(policyID)
+	if err != nil {
+		return DetectResult{}, err
+	}
+
+	if topic, ok := s.keywords.FirstMatch(prompt, policy.EnabledTopics); ok {
+		result := DetectResult{
+			Topics:    []models.Topic{topic},
+			Method:    "keyword",
+			LatencyMs: time.Since(start).Milliseconds(),
+		}
+		if err := s.writeAudit("protect", prompt, policyID, result); err != nil {
+			return DetectResult{}, err
+		}
+		return result, nil
+	}
+
+	topics, err := s.llm.ClassifyOne(ctx, prompt, policy.EnabledTopics)
 	if err != nil {
 		return DetectResult{}, fmt.Errorf("%w: %v", ErrLLMClassification, err)
 	}
@@ -49,19 +92,30 @@ func (s *Service) Detect(ctx context.Context, prompt, policyID string) (DetectRe
 		LatencyMs: time.Since(start).Milliseconds(),
 	}
 
-	auditErr := s.audit.Insert(models.AuditRecord{
-		Endpoint:       "detect",
-		Prompt:         prompt,
-		PolicyID:       policyID,
-		DetectedTopics: result.Topics,
-		Method:         result.Method,
-		LatencyMs:      result.LatencyMs,
-	})
-	if auditErr != nil {
-		return DetectResult{}, fmt.Errorf("write audit record: %w", auditErr)
+	if err := s.writeAudit("protect", prompt, policyID, result); err != nil {
+		return DetectResult{}, err
 	}
 
 	return result, nil
+}
+
+func (s *Service) writeAudit(endpoint, prompt, policyID string, result DetectResult) error {
+	topics := result.Topics
+	if topics == nil {
+		topics = []models.Topic{}
+	}
+
+	if err := s.audit.Insert(models.AuditRecord{
+		Endpoint:       endpoint,
+		Prompt:         prompt,
+		PolicyID:       policyID,
+		DetectedTopics: topics,
+		Method:         result.Method,
+		LatencyMs:      result.LatencyMs,
+	}); err != nil {
+		return fmt.Errorf("write audit record: %w", err)
+	}
+	return nil
 }
 
 var ErrLLMClassification = errors.New("llm classification failed")

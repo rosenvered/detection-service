@@ -57,6 +57,31 @@ func (c *LLMClassifier) ClassifyAll(ctx context.Context, prompt string, enabled 
 	return FilterToEnabled(topics, enabled), nil
 }
 
+func (c *LLMClassifier) ClassifyOne(ctx context.Context, prompt string, enabled []models.Topic) ([]models.Topic, error) {
+	content, err := c.complete(ctx, buildClassifyOnePrompt(prompt, enabled), false)
+	if err != nil {
+		return nil, err
+	}
+
+	topics, err := parseTopics(content)
+	if err != nil {
+		content, retryErr := c.complete(ctx, buildStrictOneRetryPrompt(prompt, enabled), true)
+		if retryErr != nil {
+			return nil, fmt.Errorf("parse llm response: %w", err)
+		}
+		topics, err = parseTopics(content)
+		if err != nil {
+			return nil, fmt.Errorf("parse llm response after retry: %w", err)
+		}
+	}
+
+	filtered := FilterToEnabled(topics, enabled)
+	if len(filtered) == 0 {
+		return nil, nil
+	}
+	return []models.Topic{filtered[0]}, nil
+}
+
 func (c *LLMClassifier) complete(ctx context.Context, userPrompt string, strict bool) (string, error) {
 	systemPrompt := systemClassifyPrompt
 	if strict {
@@ -107,6 +132,27 @@ func buildStrictRetryPrompt(prompt string, enabled []models.Topic) string {
 	return fmt.Sprintf(
 		`Classify this prompt. Enabled topics: %s
 Return JSON only: {"topics":["..."]}
+
+Prompt:
+%s`,
+		formatTopicList(enabled),
+		prompt,
+	)
+}
+
+func buildClassifyOnePrompt(prompt string, enabled []models.Topic) string {
+	return fmt.Sprintf(
+		"Classify this prompt and return ONLY the single most relevant topic.\nEnabled topics: %s\n\nPrompt:\n%s",
+		formatTopicList(enabled),
+		prompt,
+	)
+}
+
+func buildStrictOneRetryPrompt(prompt string, enabled []models.Topic) string {
+	return fmt.Sprintf(
+		`Return the single most relevant topic for this prompt.
+Enabled topics: %s
+Return JSON only: {"topics":["one_topic"]}
 
 Prompt:
 %s`,

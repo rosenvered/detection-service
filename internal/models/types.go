@@ -36,6 +36,19 @@ type DetectResponse struct {
 	DetectedTopics []Topic `json:"detected_topics"`
 }
 
+type CreatePolicyRequest struct {
+	ID            string  `json:"id"`
+	EnabledTopics []Topic `json:"enabled_topics" binding:"required"`
+}
+
+type UpdatePolicyRequest struct {
+	EnabledTopics []Topic `json:"enabled_topics" binding:"required"`
+}
+
+type PolicyListResponse struct {
+	Policies []Policy `json:"policies"`
+}
+
 type AuditRecord struct {
 	ID             string    `json:"id"`
 	Timestamp      time.Time `json:"timestamp"`
